@@ -1,0 +1,18 @@
+{
+  "name": "7-ELEVEN 丸山門市員工手順",
+  "short_name": "丸山手順",
+  "description": "丸山門市員工專用飲品手順查詢",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00833e",
+  "icons": [
+    {
+      "src": "app-icon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
