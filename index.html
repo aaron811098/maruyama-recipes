@@ -26,4 +26,31 @@ D['CITY PEARL']['黑糖珍珠撞奶']['大杯・熱']=['大杯','熱水','黑糖
 D['CITY PEARL']['咖啡珍珠歐蕾']['大杯・熱']=['大杯','熱水','黑糖珍珠','冰沙','熱牛奶補滿'];
 D['CITY PEARL']['珍珠奶茶']['大杯・熱']=['大杯','珍奶粉包','熱水','攪拌','原味珍珠','熱水補滿'];
 render();
-</script></body></html>
+// Search result chooser: show a selection window only when multiple recipes match.
+const chooser=document.createElement('div');
+chooser.className='search-chooser';
+chooser.hidden=true;
+chooser.innerHTML='<div class="chooser-backdrop"></div><section class="chooser-panel" role="dialog" aria-modal="true" aria-labelledby="chooser-title"><div class="chooser-head"><h2 id="chooser-title">請選擇食譜</h2><button type="button" class="chooser-close" aria-label="關閉">×</button></div><div class="chooser-list"></div></section>';
+document.body.appendChild(chooser);
+const closeChooser=()=>{chooser.hidden=true};
+chooser.querySelector('.chooser-close').onclick=closeChooser;
+chooser.querySelector('.chooser-backdrop').onclick=closeChooser;
+const selectRecipe=(c,d)=>{cat=c;drink=d;variant=Object.keys(D[c][d])[0];q.value=d;closeChooser();render()};
+q.oninput=()=>{
+  const keyword=q.value.trim().toLowerCase();
+  closeChooser();
+  if(!keyword)return;
+  const matches=[];
+  for(const c in D)for(const d in D[c])if(d.toLowerCase().includes(keyword))matches.push({c,d});
+  if(matches.length===1){selectRecipe(matches[0].c,matches[0].d);return}
+  if(matches.length>1){
+    chooser.querySelector('.chooser-list').innerHTML=matches.map((m,i)=>`<button type="button" data-i="${i}"><strong>${m.d}</strong><span>${m.c}</span></button>`).join('');
+    chooser.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const m=matches[Number(b.dataset.i)];selectRecipe(m.c,m.d)});
+    chooser.hidden=false;
+    return;
+  }
+  recipe.innerHTML='<div class="empty">找不到食譜，請換個關鍵字</div>';
+};
+</script><style>
+.search-chooser[hidden]{display:none}.search-chooser{position:fixed;inset:0;z-index:1000;display:flex;align-items:flex-end;justify-content:center}.chooser-backdrop{position:absolute;inset:0;background:#0008}.chooser-panel{position:relative;width:min(100%,760px);max-height:78vh;overflow:auto;background:#fff;border-radius:28px 28px 0 0;padding:22px 18px 28px;box-shadow:0 -8px 30px #0003}.chooser-head{display:flex;align-items:center;justify-content:space-between;border-bottom:5px solid var(--g);margin-bottom:12px}.chooser-head h2{margin:0 0 12px;color:var(--g);font-size:30px}.chooser-close{width:54px;height:54px;border:0;border-radius:50%;background:#eee;font-size:38px;line-height:1}.chooser-list{display:grid;gap:12px}.chooser-list button{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:72px;padding:15px 18px;border:2px solid #dce5df;border-radius:16px;background:#fff;color:var(--ink);text-align:left;font-size:24px}.chooser-list button:active{background:#edf8f1;border-color:var(--g)}.chooser-list span{flex:none;color:var(--g);font-size:17px;font-weight:800}
+</style></body></html>
