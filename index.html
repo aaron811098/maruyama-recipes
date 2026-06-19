@@ -13,7 +13,7 @@ const D={
 </script><style>.search[hidden]{display:none}</style><script>
 const searchForm=document.querySelector('.search');
 searchForm.hidden=true;
-document.querySelector('.search-open').onclick=()=>{searchForm.hidden=!searchForm.hidden;if(!searchForm.hidden)document.querySelector('#q').focus()};
+document.querySelector('.search-open').onclick=()=>{const opening=searchForm.hidden;searchForm.hidden=!opening;q.value='';closeChooser();if(opening)q.focus()};
 const removeIngredients=()=>{const list=document.querySelector('.ingredients');if(list){const heading=list.previousElementSibling;list.remove();if(heading)heading.remove()}const stepHeading=document.querySelector('.card h3');if(stepHeading)stepHeading.textContent='製作手順'};
 new MutationObserver(removeIngredients).observe(document.querySelector('#recipe'),{childList:true});
 removeIngredients();
@@ -36,7 +36,7 @@ const closeChooser=()=>{chooser.hidden=true};
 chooser.querySelector('.chooser-close').onclick=closeChooser;
 chooser.querySelector('.chooser-backdrop').onclick=closeChooser;
 const selectRecipe=(c,d)=>{cat=c;drink=d;variant=Object.keys(D[c][d])[0];closeChooser();render()};
-q.oninput=()=>{
+const runSearch=()=>{
   const keyword=q.value.trim().toLowerCase();
   closeChooser();
   if(!keyword)return;
@@ -51,6 +51,8 @@ q.oninput=()=>{
   }
   recipe.innerHTML='<div class="empty">找不到手順，請換個關鍵字</div>';
 };
+q.oninput=runSearch;
+searchForm.onsubmit=e=>{e.preventDefault();runSearch()};
 </script><style>
 .search-chooser[hidden]{display:none}.search-chooser{position:fixed;inset:0;z-index:1000;display:flex;align-items:flex-end;justify-content:center}.chooser-backdrop{position:absolute;inset:0;background:#0008}.chooser-panel{position:relative;width:min(100%,760px);max-height:78vh;overflow:auto;background:#fff;border-radius:28px 28px 0 0;padding:22px 18px 28px;box-shadow:0 -8px 30px #0003}.chooser-head{display:flex;align-items:center;justify-content:space-between;border-bottom:5px solid var(--g);margin-bottom:12px}.chooser-head h2{margin:0 0 12px;color:var(--g);font-size:30px}.chooser-close{width:54px;height:54px;border:0;border-radius:50%;background:#eee;font-size:38px;line-height:1}.chooser-list{display:grid;gap:12px}.chooser-list button{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:72px;padding:15px 18px;border:2px solid #dce5df;border-radius:16px;background:#fff;color:var(--ink);text-align:left;font-size:24px}.chooser-list button:active{background:#edf8f1;border-color:var(--g)}.chooser-list span{flex:none;color:var(--g);font-size:17px;font-weight:800}
 </style></body></html>
