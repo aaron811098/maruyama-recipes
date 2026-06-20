@@ -75,15 +75,27 @@ function renderEdit(){
   if(state.editMode==='category')renderEditCategory();else renderEditRecipe();
 }
 function renderEditCategory(){
-  $('modifyBody').innerHTML=`<label>選擇分類<select id="categoryEditSelect">${categoryOptions()}</select></label><div id="categoryEditBody"><div class="empty-state">請先選擇要修改的分類</div></div>`;
-  const select=$('categoryEditSelect');let selectedId='';
-  const showCategory=id=>{
-    selectedId=id;select.value=id;const category=state.categories.find(c=>c.id===id);
-    if(!category){$('categoryEditBody').innerHTML='<div class="empty-state">請先選擇要修改的分類</div>';return}
-    $('categoryEditBody').innerHTML=`<form id="categoryEditForm" class="form-card"><label>分類名稱<input id="categoryEditName" value="${esc(category.name)}" required></label><button class="primary-button full">儲存修改</button><div id="categoryEditMessage" class="message" hidden></div></form>`;
-    const form=$('categoryEditForm');bindDirty(form);form.onsubmit=async event=>{event.preventDefault();const name=$('categoryEditName').value.trim();const {error}=await sb.from('categories').update({name}).eq('id',category.id);if(error)return showMessage('categoryEditMessage',error.message);setDirty(false);await refreshData();renderEdit();$('categoryEditSelect').value=category.id;$('categoryEditSelect').dispatchEvent(new Event('change'));showMessage('categoryEditMessage','分類修改已儲存')};
-  };
-  select.onchange=()=>{const nextId=select.value;select.value=selectedId;guardLeave(()=>showCategory(nextId))};
+  const rows=state.categories.map(category=>{
+    const drinkIds=state.drinks.filter(drink=>drink.category_id===category.id).map(drink=>drink.id),count=state.variants.filter(variant=>drinkIds.includes(variant.drink_id)).length;
+    return `<div class="category-row"><span><strong>${esc(category.name)}</strong><small>${count} 個手順</small></span><span class="category-actions"><button type="button" data-category-edit="${category.id}">修改</button><button type="button" class="category-delete" data-category-delete="${category.id}">刪除</button></span></div>`;
+  }).join('');
+  $('modifyBody').innerHTML=`<div id="categoryManageMessage" class="message" hidden></div><div class="category-manage-list">${rows||'<div class="empty-state">目前沒有分類</div>'}</div><div id="categoryEditBody"></div>`;
+  document.querySelectorAll('[data-category-edit]').forEach(button=>button.onclick=()=>guardLeave(()=>openCategoryEditor(button.dataset.categoryEdit)));
+  document.querySelectorAll('[data-category-delete]').forEach(button=>button.onclick=()=>guardLeave(()=>deleteCategory(button.dataset.categoryDelete)));
+}
+function openCategoryEditor(id){
+  const category=state.categories.find(item=>item.id===id);if(!category)return;
+  $('categoryEditBody').innerHTML=`<form id="categoryEditForm" class="form-card category-edit-card"><h2>修改分類</h2><label>分類名稱<input id="categoryEditName" value="${esc(category.name)}" required></label><div class="form-actions"><button class="primary-button">儲存修改</button><button id="cancelCategoryEdit" type="button" class="outline-button">取消</button></div><div id="categoryEditMessage" class="message" hidden></div></form>`;
+  const form=$('categoryEditForm');bindDirty(form);form.onsubmit=async event=>{event.preventDefault();const name=$('categoryEditName').value.trim();const {error}=await sb.from('categories').update({name}).eq('id',category.id);if(error)return showMessage('categoryEditMessage',error.message);setDirty(false);await refreshData();renderEditCategory();showMessage('categoryManageMessage','分類修改已儲存')};
+  $('cancelCategoryEdit').onclick=()=>guardLeave(()=>{$('categoryEditBody').innerHTML=''});$('categoryEditName').focus();form.scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function deleteCategory(id){
+  const category=state.categories.find(item=>item.id===id);if(!category)return;
+  const drinkIds=state.drinks.filter(drink=>drink.category_id===id).map(drink=>drink.id),count=state.variants.filter(variant=>drinkIds.includes(variant.drink_id)).length;
+  const confirmed=await ask({title:'確定刪除分類？',message:count?`「${category.name}」內有 ${count} 個手順，刪除分類會連同所有手順一起刪除，且無法復原。`:`確定要刪除「${category.name}」嗎？刪除後無法復原。`,accept:'確定刪除',cancel:'取消'});if(!confirmed)return;
+  if(drinkIds.length){const drinksResult=await sb.from('drinks').delete().eq('category_id',id);if(drinksResult.error)return showMessage('categoryManageMessage',drinksResult.error.message)}
+  const categoryResult=await sb.from('categories').delete().eq('id',id);if(categoryResult.error)return showMessage('categoryManageMessage',categoryResult.error.message);
+  setDirty(false);await refreshData();renderEditCategory();showMessage('categoryManageMessage','分類已刪除');
 }
 function renderEditRecipe(){
   $('modifyBody').innerHTML=`<div class="search-box"><input id="editSearch" placeholder="搜尋飲品名稱"><button id="editSearchButton">⌕</button></div><label>分類<select id="editCategory">${categoryOptions()}</select></label><div id="editResults" class="result-list"></div><div id="editBody"></div>`;
