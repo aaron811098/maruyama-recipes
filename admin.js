@@ -4,7 +4,7 @@ import {SUPABASE_URL,SUPABASE_ANON_KEY} from './config.js';
 const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const state={categories:[],drinks:[],variants:[],page:'add',dirty:false,addMode:'recipe',sortMode:'categories'};
+const state={categories:[],drinks:[],variants:[],page:'add',dirty:false,addMode:'recipe',editMode:'recipe',sortMode:'categories'};
 let confirmResolve=null;
 
 function setDirty(value=true){state.dirty=value}
@@ -54,8 +54,8 @@ function renderAdd(){
   if(state.addMode==='category')renderAddCategory();else renderAddRecipe();
 }
 function renderAddCategory(){
-  $('addBody').innerHTML=`<form id="categoryForm" class="form-card"><label>分類名稱<input id="categoryName" placeholder="例：CITY CAFE" required></label><label>分類代碼<input id="categoryCode" placeholder="例：CITY CAFE" required></label><button class="primary-button full">儲存分類</button><div id="addMessage" class="message" hidden></div></form>`;
-  const form=$('categoryForm');bindDirty(form);form.onsubmit=async event=>{event.preventDefault();const name=$('categoryName').value.trim(),code=$('categoryCode').value.trim();const {error}=await sb.from('categories').insert({name,code,sort_order:(state.categories.length+1)*10});if(error)return showMessage('addMessage',error.message);setDirty(false);await refreshData();renderAdd();showMessage('addMessage','分類已新增')};
+  $('addBody').innerHTML=`<form id="categoryForm" class="form-card"><label>分類名稱<input id="categoryName" placeholder="例：CITY CAFE" required></label><button class="primary-button full">儲存分類</button><div id="addMessage" class="message" hidden></div></form>`;
+  const form=$('categoryForm');bindDirty(form);form.onsubmit=async event=>{event.preventDefault();const name=$('categoryName').value.trim(),code=`CAT_${Date.now().toString(36).toUpperCase()}`;const {error}=await sb.from('categories').insert({name,code,sort_order:(state.categories.length+1)*10});if(error)return showMessage('addMessage',error.message);setDirty(false);await refreshData();renderAdd();showMessage('addMessage','分類已新增')};
 }
 function renderAddRecipe(){
   $('addBody').innerHTML=`<form id="recipeForm" class="form-card"><label>分類<select id="addCategory" required>${categoryOptions()}</select></label><label>飲品名稱<input id="addName" required></label>${formOptions('add')}<label>製作手順<textarea id="addSteps" placeholder="每行一個步驟" required></textarea><span class="hint">每一行會成為一個編號步驟。</span></label><label>注意事項<textarea id="addNote" placeholder="沒有則留空"></textarea></label><button class="primary-button full">儲存手順</button><div id="addMessage" class="message" hidden></div></form>`;
@@ -70,7 +70,23 @@ async function saveNewRecipe(event){
 }
 
 function renderEdit(){
-  $('adminMain').innerHTML=`<h1 class="page-title">修改手順</h1><div class="search-box"><input id="editSearch" placeholder="搜尋飲品名稱"><button id="editSearchButton">⌕</button></div><label>分類<select id="editCategory">${categoryOptions()}</select></label><div id="editResults" class="result-list"></div><div id="editBody"></div>`;
+  $('adminMain').innerHTML=`<h1 class="page-title">修改資料</h1><div class="segmented"><button data-edit-mode="category">分類修改</button><button data-edit-mode="recipe">手順修改</button></div><div id="modifyBody"></div>`;
+  document.querySelectorAll('[data-edit-mode]').forEach(button=>{button.classList.toggle('active',button.dataset.editMode===state.editMode);button.onclick=()=>guardLeave(()=>{state.editMode=button.dataset.editMode;renderEdit()})});
+  if(state.editMode==='category')renderEditCategory();else renderEditRecipe();
+}
+function renderEditCategory(){
+  $('modifyBody').innerHTML=`<label>選擇分類<select id="categoryEditSelect">${categoryOptions()}</select></label><div id="categoryEditBody"><div class="empty-state">請先選擇要修改的分類</div></div>`;
+  const select=$('categoryEditSelect');let selectedId='';
+  const showCategory=id=>{
+    selectedId=id;select.value=id;const category=state.categories.find(c=>c.id===id);
+    if(!category){$('categoryEditBody').innerHTML='<div class="empty-state">請先選擇要修改的分類</div>';return}
+    $('categoryEditBody').innerHTML=`<form id="categoryEditForm" class="form-card"><label>分類名稱<input id="categoryEditName" value="${esc(category.name)}" required></label><button class="primary-button full">儲存修改</button><div id="categoryEditMessage" class="message" hidden></div></form>`;
+    const form=$('categoryEditForm');bindDirty(form);form.onsubmit=async event=>{event.preventDefault();const name=$('categoryEditName').value.trim();const {error}=await sb.from('categories').update({name}).eq('id',category.id);if(error)return showMessage('categoryEditMessage',error.message);setDirty(false);await refreshData();renderEdit();$('categoryEditSelect').value=category.id;$('categoryEditSelect').dispatchEvent(new Event('change'));showMessage('categoryEditMessage','分類修改已儲存')};
+  };
+  select.onchange=()=>{const nextId=select.value;select.value=selectedId;guardLeave(()=>showCategory(nextId))};
+}
+function renderEditRecipe(){
+  $('modifyBody').innerHTML=`<div class="search-box"><input id="editSearch" placeholder="搜尋飲品名稱"><button id="editSearchButton">⌕</button></div><label>分類<select id="editCategory">${categoryOptions()}</select></label><div id="editResults" class="result-list"></div><div id="editBody"></div>`;
   $('editSearch').oninput=showSearchResults;$('editSearchButton').onclick=showSearchResults;$('editCategory').onchange=()=>showCategoryResults($('editCategory').value);
   $('editResults').innerHTML='<div class="empty-state">請搜尋或選擇分類後顯示手順項目</div>';
 }
